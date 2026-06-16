@@ -9,6 +9,20 @@ public class FrontController extends HttpServlet {
 
     private void processRequest(HttpServletRequest request, HttpServletResponse response) {
         String path = request.req.getServletPath();
+        response.setContentType("text/html;charset=UTF-8");
+
+        PrintWriter out = response.getWriter();
+
+        out.println("<!DOCTYPE html>");
+        out.println("<html>");
+        out.println("<head>");
+        out.println("<title>test</title>");
+        out.println("</head>");
+        out.println("<body>");
+        out.println("<h1>Bonjour depuis une Servlet !</h1>");
+        out.println(path);
+        out.println("</body>");
+        out.println("</html>");
         throw new UnsupportedOperationException("Unimplemented method 'processRequest'");
     }
 }
