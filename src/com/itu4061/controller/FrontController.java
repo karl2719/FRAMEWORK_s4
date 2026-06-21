@@ -2,14 +2,11 @@ package com.itu4061.controller;
 
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
-import java.io.PrintWriter;
- 
-public class FrontController extends HttpServlet {
-    @Override
-    public void init(){
-        ClassLoader cl = Thread.currentThread().getContextClassLoader() ;
-    }
 
+import java.io.File;
+import java.io.PrintWriter;
+
+public class FrontController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
@@ -36,9 +33,6 @@ public class FrontController extends HttpServlet {
             out.println("</head>");
             out.println("<body>");
             out.println("<h1>GET ALL URL</h1>"+ url.toString()) ;
-            out.println(Thread.currentThread().getContextClassLoader().toString() + "<br>");
-            out.println(HttpServlet.class.getClassLoader().toString()+ "<br>");
-            out.println(String.class.getClassLoader().toString()+ "<br>");
             out.println("</body>");
             out.println("</html>");
 
