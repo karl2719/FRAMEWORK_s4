@@ -11,13 +11,14 @@ import java.util.Map;
 public class FrontController extends HttpServlet {
 
     protected Map<String, Class<?>> classAnnote;
-    protected Package[] packages;
-
+    protected Package[] packagesloaded;
     @Override
     public void init() throws ServletException {
         super.init();
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        packages = classLoader.getDefinedPackages();
+        packagesloaded = classLoader.getDefinedPackages();
+
+
     }
 
     @Override
@@ -48,7 +49,7 @@ public class FrontController extends HttpServlet {
             out.println("<h1>GET ALL URL : </h1>" + url.toString() + "</br>" );
             out.println(Thread.currentThread().getContextClassLoader().toString() );
             out.println("<ul>");
-            for (Package pack : packages) {
+            for (Package pack : packagesloaded) {
                 out.println(pack.getName());
                 out.println("</br>");
             }
