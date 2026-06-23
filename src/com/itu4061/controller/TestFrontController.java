@@ -19,29 +19,24 @@ import java.net.URL;
 public class TestFrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
     // public Map<Annotation,Class<?>> ClassAnnoatationMappe = new HashMap<>();
-
+    public ArrayList<String> allWebappClassName ;
     @Override
-    public void init() throws ServletException{
+    public void init() throws ServletException {
         super.init();
 
         ClassLoader classLoader = getClassLoader();
-        // recuperation des packages
         Package[] packages = classLoader.getDefinedPackages();
 
+        allWebappClassName = getAllWebappClasses() ;
 
-        ArrayList<Class<?>> webAppClasses = new ArrayList<>() ;
-        try {
-            this.updateWebappclasses() ;
-        } catch (Exception e) {
-            throw new ServletException(e.getMessage()) ;
-        }
+        
         // String packageName = this.getClass().getPackage().getName();
         // String path = packageName.replace('.', '/');
         // URL resource = classLoader.getResource(path);
         // File directory = new File(resource.getFile());
 
     }
-    
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
@@ -74,33 +69,23 @@ public class TestFrontController extends HttpServlet {
                 out.println(pack.getName() + "</br>");
             }
 
-            out.println("</br> <h1>ClassLoaded</h1>");
-            for (Package pack : packages) {
-                if (!pack.getName().contains("com")) {
-                    String relativePath = pack.getName().replace('.', '/');
-                    URL packRessources = classLoader.getResource(relativePath);
-                    File directoryPack = new File(packRessources.getFile());
-                    out.println("<h2>" + pack.getName() + "</h2>" + "<ul>");
+        } catch (Exception e) {
 
-                    for (File classLoaded : directoryPack.listFiles()) {
-                        String classname = pack.getName() + "." + classLoaded.getName().replace(".class", "");
-                        webAppClasses.add(Class.forName(classname));
-                        out.println("<li>" + classname + "</li>" + "</br>");
-                    }
-                    out.println("</ul>");
-                } else {
-                    continue;
-                }
+        }
+
+        response.setContentType("text/html;charset=UTF-8");
+
+        ClassLoader loader = getClassLoader();
+
+        try {
+            PrintWriter out = response.getWriter();
+            for (Class<?> class1 : this.getLoadedWebappClasses()) {
+                out.println(class1.getName() + "</br>");
             }
-            out.println("<h2>Liste des annoations par classes</h2>");
-            for (Class<?> cls : webAppClasses) {
-                Annotation[] anno = cls.getAnnotations();
-                out.println("<h3>" + cls.getName() + "</h3>");
-                out.println("<ul>");
-                for (Annotation a : anno) {
-                    out.println("<li>" + a.toString() + "</li>");
-                }
-                out.println("</ul>");
+            out.println(loader.getResource("").getPath()+"</br>");
+
+            for (String class1 : this.getAllWebappClasses()) {
+                out.println(class1 + "</br>");
             }
         } catch (Exception e) {
 
@@ -117,17 +102,17 @@ public class TestFrontController extends HttpServlet {
 
     }
 
-    private ClassLoader getClassLoader() {
+    public ClassLoader getClassLoader() {
         return Thread.currentThread().getContextClassLoader();
     }
 
-    public ArrayList<Class<?>> updateWebappclasses() throws Exception{
+    public ArrayList<Class<?>> getLoadedWebappClasses() throws Exception {
         ClassLoader classLoader = getClassLoader();
 
         Package[] packages = classLoader.getDefinedPackages();
         ArrayList<Class<?>> webAppClasses = new ArrayList<Class<?>>();
 
-         for (Package pack : packages) {
+        for (Package pack : packages) {
             if (!pack.getName().contains("com")) {
                 String relativePath = pack.getName().replace('.', '/');
                 URL packRessources = classLoader.getResource(relativePath);
@@ -136,16 +121,44 @@ public class TestFrontController extends HttpServlet {
                 for (File classLoaded : directoryPack.listFiles()) {
                     String classname = pack.getName() + "." + classLoaded.getName().replace(".class", "");
                     try {
-                        webAppClasses.add(Class.forName(classname));                        
+                        webAppClasses.add(Class.forName(classname));
                     } catch (Exception e) {
-                       throw new Exception("Class not found : "+classname);
+                        throw new Exception("Class not found : " + classname);
                     }
                 }
             } else {
                 continue;
             }
         }
-        return webAppClasses ;
+        return webAppClasses;
 
     }
+
+    public ArrayList<String> getAllWebappClasses() {
+
+        ClassLoader loader = getClassLoader();
+        String path = loader.getResource("").getPath();
+        ArrayList<String> result = new ArrayList<>();
+        scanForClasses(new File(loader.getResource("").getFile()), path, result);
+
+        return result;
+    }
+
+    private void scanForClasses(File dir, String root, ArrayList<String> result) {
+
+        for (File file : dir.listFiles()) {
+
+            if (file.isDirectory()) {
+                scanForClasses(file, root, result);
+            } else if (file.getName().endsWith(".class")) {
+                String classname = file.getAbsolutePath()
+                        .replace(root, "")
+                        .replace(File.separator, ".")
+                        .replace(".class", "");
+                result.add(classname);
+            }
+        }
+    }
+
+    
 }
