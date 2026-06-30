@@ -37,7 +37,7 @@ public class TestFrontController extends HttpServlet {
         // String path = packageName.replace('.', '/');
         // URL resource = classLoader.getResource(path);
         // File directory = new File(resource.getFile());
-
+        initNb++ ;
     }
 
     @Override
