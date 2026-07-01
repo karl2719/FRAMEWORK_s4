@@ -5,7 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 //test package
-import com.itu4061.annotation.caracteristique.Caracteristique;
+import com.itu4061.annotation.type.Caracteristique;
 
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
