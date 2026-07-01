@@ -7,8 +7,12 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.itu4061.annotation.Controlleur;
+import javax.swing.plaf.synth.SynthStyleFactory;
 
+import com.itu4061.annotation.Controlleur;
+import com.itu4061.annotation.Entite;
+import com.itu4061.annotation.GetUrl;
+import com.itu4061.annotation.ContolMapping;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,11 +37,6 @@ public class TestFrontController extends HttpServlet {
 
         allWebappClassName = getAllWebappClasses();
 
-        // String packageName = this.getClass().getPackage().getName();
-        // String path = packageName.replace('.', '/');
-        // URL resource = classLoader.getResource(path);
-        // File directory = new File(resource.getFile());
-        initNb++ ;
     }
 
     @Override
@@ -74,8 +73,9 @@ public class TestFrontController extends HttpServlet {
         for (String c : this.getAllWebappClasses()) {
             out.println(c + "</br>");
         }
-
-        // getAllAnnotatedClassBy(response, Controlleur.class);
+        out.println(getAnnotatedClassesBy(Entite.class).toString());
+        getAllAnnotated(response, Controlleur.class);
+        out.println(getGetUrlController());
     }
 
     @Override
@@ -159,52 +159,99 @@ public class TestFrontController extends HttpServlet {
         ArrayList<String> webappClasses = getAllWebappClasses();
 
         for (String name : webappClasses) {
-            Class<?> annoted = null;
+            Class<?> cls = null;
 
             try {
-                annoted = Class.forName(name);
+                cls = Class.forName(name);
             } catch (Exception e) {
-                out.println(e.getMessage() + " : ClassNotFound => ");
+                System.out.println(e.getMessage() + " : ClassNotFound => ");
                 continue;
             }
-            Annotation ann = null;
-            try {
-                ann = annoted.getAnnotation(annotationClass);
-            } catch (Exception e) {
-                continue;
-            }
-            out.println(name + "</br>");
-            out.println(ann.annotationType() + "</br>");
-            out.println(
-                    Arrays.toString(ann.annotationType().getDeclaredMethods()));
-            for (Method m : ann.annotationType().getDeclaredMethods()) {
+
+            if (cls != null) {
+                Annotation ann = null;
                 try {
-                    Object o = m.invoke(ann);
-                    out.println(o.toString());
-
+                    ann = cls.getAnnotation(annotationClass);
                 } catch (Exception e) {
-                    // continue;
                 }
+
+                if (ann != null) {
+                    out.println("</br> <h2>" + name + "</h2></br>");
+                    out.println("<h3>Is annotated by : <h3>" + ann.annotationType() + "</br> ");
+                    out.println(Arrays.toString(ann.annotationType().getDeclaredMethods()));
+                    for (Method m : ann.annotationType().getDeclaredMethods()) {
+                        try {
+                            Object o = m.invoke(ann);
+                            out.println("<h4>" + m.toString() + " : " + o.toString() + "</h4> </br>");
+
+                        } catch (Exception e) {
+                            continue;
+                        }
+                    }
+                } else {
+                    out.println(
+                            "</br>" + cls.getName() + "is not annotated by :" + annotationClass.getName() + "</br>");
+                }
+
+            } else {
+
             }
+
         }
     }
 
     private ArrayList<Class<?>> getAnnotatedClassesBy(Class<? extends Annotation> annotation) {
-        ArrayList<Class<?>> rez = new ArrayList<Class<?>>() ;
+        ArrayList<Class<?>> rez = new ArrayList<Class<?>>();
         ArrayList<String> webappClasses = getAllWebappClasses();
 
         for (String name : webappClasses) {
-            Class<?> annoted = null;
+            Class<?> cls = null;
+
             try {
-                annoted = Class.forName(name);
-                
+                cls = Class.forName(name, false, getClassLoader());
             } catch (Exception e) {
-                System.err.println("Class not found ");
-                e.printStackTrace();
-                continue ;
+                System.out.println(e.getMessage() + " : ClassNotFound => ");
+                continue;
+            }
+
+            if (cls != null) {
+                Annotation ann = null;
+                try {
+                    ann = cls.getAnnotation(annotation);
+                } catch (Exception e) {
+                }
+
+                if (ann != null) {
+                    rez.add(cls);
+                } else {
+                    System.out.println(
+                            "</br>" + cls.getName() + "is not annotated by :" + annotation.getName() + "</br>");
+                }
+
+            } else {
+
+            }
+        }
+        return rez;
+    }
+
+    private Map<String, Method> getGetUrlController() {
+        Map<String, Method> rez = new HashMap<>();
+        ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
+        for (Class<?> cont : controllers) {
+            for (Method m : cont.getMethods()) {
+                if (m.isAnnotationPresent(GetUrl.class)) {
+
+                    GetUrl w = m.getAnnotation(GetUrl.class);
+                    cont.getAnnotationsByType(ContolMapping.class);
+                    try {
+                        rez.put(w.url(), m);
+                    } catch (Exception e) {
+                    }
+                }
             }
         }
 
-        return  rez;
+        return rez;
     }
 }
