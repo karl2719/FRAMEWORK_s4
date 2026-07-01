@@ -3,8 +3,11 @@ package com.itu4061.controller;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.itu4061.annotation.Controlleur;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -13,13 +16,14 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.net.URL;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Array;
-import java.net.URL;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 public class TestFrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
     // public Map<Annotation,Class<?>> ClassAnnoatationMappe = new HashMap<>();
-    public ArrayList<String> allWebappClassName ;
+    public ArrayList<String> allWebappClassName;
+
     @Override
     public void init() throws ServletException {
         super.init();
@@ -27,9 +31,8 @@ public class TestFrontController extends HttpServlet {
         ClassLoader classLoader = getClassLoader();
         Package[] packages = classLoader.getDefinedPackages();
 
-        allWebappClassName = getAllWebappClasses() ;
+        allWebappClassName = getAllWebappClasses();
 
-        
         // String packageName = this.getClass().getPackage().getName();
         // String path = packageName.replace('.', '/');
         // URL resource = classLoader.getResource(path);
@@ -42,54 +45,37 @@ public class TestFrontController extends HttpServlet {
             throws ServletException, java.io.IOException {
         processRequest(request, response);
 
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        Package[] packages = classLoader.getDefinedPackages();
-
-        String packageName = this.getClass().getPackage().getName();
-
-        String path = packageName.replace('.', '/');
-
-        URL resource = classLoader.getResource(path);
-        File directory = new File(resource.getFile());
-
         response.setContentType("text/html;charset=UTF-8");
+        PrintWriter out = null;
+
         try {
-            PrintWriter out = response.getWriter();
-
-            out.println("<h1>Current Thread</h1>" + getClassLoader().toString() + "\n </br>");
-
-            out.println("<h1>Directory file</h1>");
-
-            for (File file : directory.listFiles()) {
-                out.println(file.getName());
-            }
-
-            out.println("</br> <h1>Package list</h1>");
-            for (Package pack : packages) {
-                out.println(pack.getName() + "</br>");
-            }
-
+            out = response.getWriter();
         } catch (Exception e) {
 
         }
 
-        response.setContentType("text/html;charset=UTF-8");
+        // ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        // Package[] packages = classLoader.getDefinedPackages();
+        // String packageName = this.getClass().getPackage().getName();
+        // String path = packageName.replace('.', '/');
+        // URL resource = classLoader.getResource(path);
+        // File directory = new File(resource.getFile());
+        // out.println("<h1>Current Thread</h1>" + getClassLoader().toString() + "\n
+        // </br>");
+        // out.println("<h1>Directory file</h1>");
+        // for (File file : directory.listFiles()) {
+        // out.println(file.getName());
+        // }
+        // out.println("</br> <h1>Package list</h1>");
+        // for (Package pack : packages) {
+        // out.println(pack.getName() + "</br>");
+        // }
 
-        ClassLoader loader = getClassLoader();
-
-        try {
-            PrintWriter out = response.getWriter();
-            for (Class<?> class1 : this.getLoadedWebappClasses()) {
-                out.println(class1.getName() + "</br>");
-            }
-            out.println(loader.getResource("").getPath()+"</br>");
-
-            for (String class1 : this.getAllWebappClasses()) {
-                out.println(class1 + "</br>");
-            }
-        } catch (Exception e) {
-
+        for (String c : this.getAllWebappClasses()) {
+            out.println(c + "</br>");
         }
+
+        // getAllAnnotatedClassBy(response, Controlleur.class);
     }
 
     @Override
@@ -160,5 +146,65 @@ public class TestFrontController extends HttpServlet {
         }
     }
 
-    
+    private /* ArrayList<Class<?>> */ void getAllAnnotated(HttpServletResponse response,
+            Class<? extends Annotation> annotationClass) {
+        PrintWriter out = null;
+
+        try {
+            out = response.getWriter();
+        } catch (Exception e) {
+
+        }
+
+        ArrayList<String> webappClasses = getAllWebappClasses();
+
+        for (String name : webappClasses) {
+            Class<?> annoted = null;
+
+            try {
+                annoted = Class.forName(name);
+            } catch (Exception e) {
+                out.println(e.getMessage() + " : ClassNotFound => ");
+                continue;
+            }
+            Annotation ann = null;
+            try {
+                ann = annoted.getAnnotation(annotationClass);
+            } catch (Exception e) {
+                continue;
+            }
+            out.println(name + "</br>");
+            out.println(ann.annotationType() + "</br>");
+            out.println(
+                    Arrays.toString(ann.annotationType().getDeclaredMethods()));
+            for (Method m : ann.annotationType().getDeclaredMethods()) {
+                try {
+                    Object o = m.invoke(ann);
+                    out.println(o.toString());
+
+                } catch (Exception e) {
+                    // continue;
+                }
+            }
+        }
+    }
+
+    private ArrayList<Class<?>> getAnnotatedClassesBy(Class<? extends Annotation> annotation) {
+        ArrayList<Class<?>> rez = new ArrayList<Class<?>>() ;
+        ArrayList<String> webappClasses = getAllWebappClasses();
+
+        for (String name : webappClasses) {
+            Class<?> annoted = null;
+            try {
+                annoted = Class.forName(name);
+                
+            } catch (Exception e) {
+                System.err.println("Class not found ");
+                e.printStackTrace();
+                continue ;
+            }
+        }
+
+        return  rez;
+    }
 }
