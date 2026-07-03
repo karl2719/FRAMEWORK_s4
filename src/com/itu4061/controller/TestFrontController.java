@@ -7,12 +7,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.swing.plaf.synth.SynthStyleFactory;
 
 import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.Entite;
 import com.itu4061.annotation.GetUrl;
+import com.itu4061.annotation.PostUrl ;
 import com.itu4061.annotation.ContolMapping;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,6 +28,8 @@ public class TestFrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
     // public Map<Annotation,Class<?>> ClassAnnoatationMappe = new HashMap<>();
     public ArrayList<String> allWebappClassName;
+    public Map<String, Method> methodPostMapping ;
+    public Map<String, Method> methodGetMapping ;
 
     @Override
     public void init() throws ServletException {
@@ -36,7 +39,8 @@ public class TestFrontController extends HttpServlet {
         Package[] packages = classLoader.getDefinedPackages();
 
         allWebappClassName = getAllWebappClasses();
-
+        methodPostMapping = getPostUrlController() ;
+        methodGetMapping = getGetUrlController();
     }
 
     @Override
@@ -241,6 +245,25 @@ public class TestFrontController extends HttpServlet {
         for (Class<?> cont : controllers) {
             for (Method m : cont.getMethods()) {
                 if (m.isAnnotationPresent(GetUrl.class)) {
+
+                    GetUrl w = m.getAnnotation(GetUrl.class);
+                    cont.getAnnotationsByType(ContolMapping.class);
+                    try {
+                        rez.put(w.url(), m);
+                    } catch (Exception e) {
+                    }
+                }
+            }
+        }
+
+        return rez;
+    }
+    private Map<String, Method> getPostUrlController() {
+        Map<String, Method> rez = new HashMap<>();
+        ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
+        for (Class<?> cont : controllers) {
+            for (Method m : cont.getMethods()) {
+                if (m.isAnnotationPresent(PostUrl.class)) {
 
                     GetUrl w = m.getAnnotation(GetUrl.class);
                     cont.getAnnotationsByType(ContolMapping.class);
