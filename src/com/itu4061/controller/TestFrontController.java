@@ -7,13 +7,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-
 import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.Entite;
 import com.itu4061.annotation.GetUrl;
-import com.itu4061.annotation.PostUrl ;
-import com.itu4061.annotation.ContolMapping;
+import com.itu4061.annotation.PostUrl;
+import com.itu4061.map.MethodMapping;
 
+import jakarta.servlet.ServletContainerInitializer;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,10 +26,9 @@ import java.lang.reflect.Method;
 public class TestFrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
     public ArrayList<String> allWebappClassName;
-    public Map<String, Method> methodPostMapping ;
-    public Map<String, Method> methodGetMapping ;
+    public Map<String, Method> methodPostMapping;
+    public Map<String, Method> methodGetMapping;
 
-    
     @Override
     public void init() throws ServletException {
         super.init();
@@ -38,7 +37,7 @@ public class TestFrontController extends HttpServlet {
         Package[] packages = classLoader.getDefinedPackages();
 
         allWebappClassName = getAllWebappClasses();
-        methodPostMapping = getPostUrlController() ;
+        methodPostMapping = getPostUrlController();
         methodGetMapping = getGetUrlController();
     }
 
@@ -46,7 +45,6 @@ public class TestFrontController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
         processRequest(request, response);
-
         response.setContentType("text/html;charset=UTF-8");
         PrintWriter out = null;
 
@@ -56,13 +54,20 @@ public class TestFrontController extends HttpServlet {
 
         }
 
-
         for (String c : this.getAllWebappClasses()) {
             out.println(c + "</br>");
         }
         out.println(getAnnotatedClassesBy(Entite.class).toString());
         getAllAnnotated(response, Controlleur.class);
-        out.println(getGetUrlController());
+       
+        getGetUrlControllerTest().forEach((key,value) -> {
+            
+        });
+        out.println(getGetUrlControllerTest());
+
+        // String methodKey = request.getRequestURI().replace(getServletContext().getContextPath(), "");
+
+        // this.methodGetMapping.get(methodKey).invoke(methodKey, null);
     }
 
     @Override
@@ -73,6 +78,10 @@ public class TestFrontController extends HttpServlet {
 
     private void processRequest(HttpServletRequest request, HttpServletResponse response) {
 
+    }
+
+    private void chargeAllInstance(){
+        
     }
 
     public ClassLoader getClassLoader() {
@@ -226,13 +235,15 @@ public class TestFrontController extends HttpServlet {
         Map<String, Method> rez = new HashMap<>();
         ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
         for (Class<?> cont : controllers) {
+            Controlleur src = cont.getAnnotation(Controlleur.class);
+
             for (Method m : cont.getMethods()) {
                 if (m.isAnnotationPresent(GetUrl.class)) {
 
                     GetUrl w = m.getAnnotation(GetUrl.class);
-                    cont.getAnnotationsByType(ContolMapping.class);
+                    String key = src.mapping() + w.url();
                     try {
-                        rez.put(w.url(), m);
+                        rez.put(key, m);
                     } catch (Exception e) {
                     }
                 }
@@ -241,17 +252,20 @@ public class TestFrontController extends HttpServlet {
 
         return rez;
     }
+
     private Map<String, Method> getPostUrlController() {
         Map<String, Method> rez = new HashMap<>();
         ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
         for (Class<?> cont : controllers) {
+            Controlleur src = cont.getAnnotation(Controlleur.class);
             for (Method m : cont.getMethods()) {
                 if (m.isAnnotationPresent(PostUrl.class)) {
 
-                    GetUrl w = m.getAnnotation(GetUrl.class);
-                    cont.getAnnotationsByType(ContolMapping.class);
+                    PostUrl w = m.getAnnotation(PostUrl.class);
+                    String key = src.mapping() + w.url();
+
                     try {
-                        rez.put(w.url(), m);
+                        rez.put(key, m);
                     } catch (Exception e) {
                     }
                 }
@@ -260,11 +274,42 @@ public class TestFrontController extends HttpServlet {
 
         return rez;
     }
-    public Map<String, Method> getMethodPostMapping() {
+
+    private Map<String, MethodMapping<GetUrl>> getGetUrlControllerTest() {
+        Map<String, MethodMapping<GetUrl>> rez = new HashMap<>();
+        ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
+        for (Class<?> cont : controllers) {
+            Controlleur src = cont.getAnnotation(Controlleur.class);
+
+            for (Method m : cont.getMethods()) {
+                if (m.isAnnotationPresent(GetUrl.class)) {
+                    GetUrl w = m.getAnnotation(GetUrl.class);
+                    MethodMapping<GetUrl> value = null;
+                    try {
+                        value = new MethodMapping<GetUrl>(m, cont, w);
+                    } catch (Exception e) {
+                        // TODO: handle exception
+                    }
+                    if (value != null) {
+                        try {
+                            String key = src.mapping() + w.url();
+                            rez.put(key, value);
+                        } catch (Exception e) {
+                        }
+                    }
+
+                }
+            }
+        }
+
+        return rez;
+    }
+
+    private Map<String, Method> getMethodPostMapping() {
         return methodPostMapping;
     }
 
-    public Map<String, Method> getMethodGetMapping() {
+    private Map<String, Method> getMethodGetMapping() {
         return methodGetMapping;
     }
 

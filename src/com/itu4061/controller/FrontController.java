@@ -12,7 +12,6 @@ import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.Entite;
 import com.itu4061.annotation.GetUrl;
 import com.itu4061.annotation.PostUrl ;
-import com.itu4061.annotation.ContolMapping;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -46,7 +45,7 @@ public class FrontController extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
         processRequest(request, response);
-
+                
         response.setContentType("text/html;charset=UTF-8");
         PrintWriter out = null;
 
@@ -63,12 +62,13 @@ public class FrontController extends HttpServlet {
         out.println(getAnnotatedClassesBy(Entite.class).toString());
         getAllAnnotated(response, Controlleur.class);
         out.println(getGetUrlController());
+
+
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-        processRequest(request, response);
     }
 
     private void processRequest(HttpServletRequest request, HttpServletResponse response) {
@@ -230,7 +230,6 @@ public class FrontController extends HttpServlet {
                 if (m.isAnnotationPresent(GetUrl.class)) {
 
                     GetUrl w = m.getAnnotation(GetUrl.class);
-                    cont.getAnnotationsByType(ContolMapping.class);
                     try {
                         rez.put(w.url(), m);
                     } catch (Exception e) {
@@ -248,8 +247,7 @@ public class FrontController extends HttpServlet {
             for (Method m : cont.getMethods()) {
                 if (m.isAnnotationPresent(PostUrl.class)) {
 
-                    GetUrl w = m.getAnnotation(GetUrl.class);
-                    cont.getAnnotationsByType(ContolMapping.class);
+                    PostUrl w = m.getAnnotation(PostUrl.class);
                     try {
                         rez.put(w.url(), m);
                     } catch (Exception e) {
