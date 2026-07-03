@@ -21,16 +21,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.net.URL;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 public class TestFrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
-    // public Map<Annotation,Class<?>> ClassAnnoatationMappe = new HashMap<>();
     public ArrayList<String> allWebappClassName;
     public Map<String, Method> methodPostMapping ;
     public Map<String, Method> methodGetMapping ;
 
+    
     @Override
     public void init() throws ServletException {
         super.init();
@@ -57,22 +56,6 @@ public class TestFrontController extends HttpServlet {
 
         }
 
-        // ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        // Package[] packages = classLoader.getDefinedPackages();
-        // String packageName = this.getClass().getPackage().getName();
-        // String path = packageName.replace('.', '/');
-        // URL resource = classLoader.getResource(path);
-        // File directory = new File(resource.getFile());
-        // out.println("<h1>Current Thread</h1>" + getClassLoader().toString() + "\n
-        // </br>");
-        // out.println("<h1>Directory file</h1>");
-        // for (File file : directory.listFiles()) {
-        // out.println(file.getName());
-        // }
-        // out.println("</br> <h1>Package list</h1>");
-        // for (Package pack : packages) {
-        // out.println(pack.getName() + "</br>");
-        // }
 
         for (String c : this.getAllWebappClasses()) {
             out.println(c + "</br>");
@@ -277,4 +260,12 @@ public class TestFrontController extends HttpServlet {
 
         return rez;
     }
+    public Map<String, Method> getMethodPostMapping() {
+        return methodPostMapping;
+    }
+
+    public Map<String, Method> getMethodGetMapping() {
+        return methodGetMapping;
+    }
+
 }
