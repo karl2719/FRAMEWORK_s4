@@ -23,7 +23,7 @@ import java.net.URL;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 
-public class FrontController extends HttpServlet {
+public class TestFrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
     public ArrayList<String> allWebappClassName;
     public Map<String, Method> methodPostMapping ;
