@@ -26,8 +26,9 @@ import java.lang.reflect.Method;
 public class TestFrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
     public ArrayList<String> allWebappClassName;
-    public Map<String, Method> methodPostMapping;
-    public Map<String, Method> methodGetMapping;
+
+    public Map<String, MethodMapping<GetUrl>> urlGetMapping;
+    public Map<String, MethodMapping<PostUrl>> urlPostMapping;
 
     @Override
     public void init() throws ServletException {
@@ -37,8 +38,9 @@ public class TestFrontController extends HttpServlet {
         Package[] packages = classLoader.getDefinedPackages();
 
         allWebappClassName = getAllWebappClasses();
-        methodPostMapping = getPostUrlController();
-        methodGetMapping = getGetUrlController();
+        urlGetMapping = urlGetControllerMapping();
+        urlPostMapping = urlPostControllerMapping();
+
     }
 
     @Override
@@ -54,20 +56,45 @@ public class TestFrontController extends HttpServlet {
 
         }
 
-        for (String c : this.getAllWebappClasses()) {
-            out.println(c + "</br>");
-        }
-        out.println(getAnnotatedClassesBy(Entite.class).toString());
-        getAllAnnotated(response, Controlleur.class);
-       
-        getGetUrlControllerTest().forEach((key,value) -> {
+        // for (String c : this.getAllWebappClasses()) {
+        // out.println(c + "</br>");
+        // }
+        // out.println(getAnnotatedClassesBy(Entite.class).toString());
+        // // getAllAnnotated(response, Controlleur.class);
+
+        // out.println(urlGetMapping);
+        // out.println(getRequestURI(request));
+        MethodMapping methodMapping = null ;
+        try {
             
-        });
-        out.println(getGetUrlControllerTest());
+             methodMapping = urlGetMapping.get(getRequestURI(request));
+        } catch (Exception e) {
+            out.println(e.getMessage());
+            return ;
+        }
 
-        // String methodKey = request.getRequestURI().replace(getServletContext().getContextPath(), "");
+        if (methodMapping == null) {
+            out.println(404);
+            return ;
+        }
+        Class<?> class1 = methodMapping.getSource();
+        out.println(class1.getName() + "</br>");
+        Object o = null;
 
-        // this.methodGetMapping.get(methodKey).invoke(methodKey, null);
+        try {
+            o = class1.getDeclaredConstructor()
+                    .newInstance();
+
+        } catch (Exception e) {
+           out.println(e.getMessage());
+        }
+        Method method = methodMapping.getMethod();
+        try {
+            
+            method.invoke(o, request,response);
+        } catch (Exception e) {
+            out.println(e.getMessage() + "eaast");
+        }
     }
 
     @Override
@@ -80,8 +107,8 @@ public class TestFrontController extends HttpServlet {
 
     }
 
-    private void chargeAllInstance(){
-        
+    private String getRequestURI(HttpServletRequest request) {
+        return request.getRequestURI().replace(request.getContextPath() + "/", "");
     }
 
     public ClassLoader getClassLoader() {
@@ -142,7 +169,7 @@ public class TestFrontController extends HttpServlet {
         }
     }
 
-    private /* ArrayList<Class<?>> */ void getAllAnnotated(HttpServletResponse response,
+    private void getAllAnnotated(HttpServletResponse response,
             Class<? extends Annotation> annotationClass) {
         PrintWriter out = null;
 
@@ -231,86 +258,51 @@ public class TestFrontController extends HttpServlet {
         return rez;
     }
 
-    private Map<String, Method> getGetUrlController() {
-        Map<String, Method> rez = new HashMap<>();
+    private Map<String, MethodMapping<GetUrl>> urlGetControllerMapping() {
+        Map<String, MethodMapping<GetUrl>> rez = new HashMap<>();
         ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
+
         for (Class<?> cont : controllers) {
             Controlleur src = cont.getAnnotation(Controlleur.class);
 
             for (Method m : cont.getMethods()) {
                 if (m.isAnnotationPresent(GetUrl.class)) {
 
-                    GetUrl w = m.getAnnotation(GetUrl.class);
-                    String key = src.mapping() + w.url();
+                    GetUrl getUrl = m.getAnnotation(GetUrl.class);
+                    String key = src.mapping() + getUrl.url();
                     try {
-                        rez.put(key, m);
+                        MethodMapping methodMapping = new MethodMapping<Annotation>(m, cont, getUrl);
+                        rez.put(key, methodMapping);
                     } catch (Exception e) {
                     }
                 }
             }
         }
-
         return rez;
     }
 
-    private Map<String, Method> getPostUrlController() {
-        Map<String, Method> rez = new HashMap<>();
+    private Map<String, MethodMapping<PostUrl>> urlPostControllerMapping() {
+        Map<String, MethodMapping<PostUrl>> rez = new HashMap<>();
         ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
+
         for (Class<?> cont : controllers) {
             Controlleur src = cont.getAnnotation(Controlleur.class);
+
             for (Method m : cont.getMethods()) {
                 if (m.isAnnotationPresent(PostUrl.class)) {
 
-                    PostUrl w = m.getAnnotation(PostUrl.class);
-                    String key = src.mapping() + w.url();
-
+                    PostUrl postUrl = m.getAnnotation(PostUrl.class);
+                    String key = src.mapping() + postUrl.url();
                     try {
-                        rez.put(key, m);
+                        MethodMapping methodMapping = new MethodMapping<Annotation>(m, cont, postUrl);
+                        rez.put(key, methodMapping);
                     } catch (Exception e) {
+
                     }
                 }
             }
         }
-
         return rez;
-    }
-
-    private Map<String, MethodMapping<GetUrl>> getGetUrlControllerTest() {
-        Map<String, MethodMapping<GetUrl>> rez = new HashMap<>();
-        ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
-        for (Class<?> cont : controllers) {
-            Controlleur src = cont.getAnnotation(Controlleur.class);
-
-            for (Method m : cont.getMethods()) {
-                if (m.isAnnotationPresent(GetUrl.class)) {
-                    GetUrl w = m.getAnnotation(GetUrl.class);
-                    MethodMapping<GetUrl> value = null;
-                    try {
-                        value = new MethodMapping<GetUrl>(m, cont, w);
-                    } catch (Exception e) {
-                        // TODO: handle exception
-                    }
-                    if (value != null) {
-                        try {
-                            String key = src.mapping() + w.url();
-                            rez.put(key, value);
-                        } catch (Exception e) {
-                        }
-                    }
-
-                }
-            }
-        }
-
-        return rez;
-    }
-
-    private Map<String, Method> getMethodPostMapping() {
-        return methodPostMapping;
-    }
-
-    private Map<String, Method> getMethodGetMapping() {
-        return methodGetMapping;
     }
 
 }
