@@ -1,6 +1,10 @@
 package com.itu4061.map;
 
 import java.lang.reflect.Method;
+
+import com.itu4061.exception.FrameworkException4061;
+import com.itu4061.exception.MappingMethodException;
+
 import java.lang.annotation.Annotation;
 
 public class MethodMapping < A extends Annotation > {
@@ -11,10 +15,15 @@ public class MethodMapping < A extends Annotation > {
     }
 
     
-    public MethodMapping(Method method, Class<?> source, A annotationA) {
+    public MethodMapping(Method method, Class<?> source, A annotation) throws FrameworkException4061{
         this.method = method;
         this.source = source;
-        this.annotationA = annotationA;
+        try {
+            this.annotationA = annotation;
+            
+        } catch (Exception e) {
+            throw new MappingMethodException("Type samy hafa :" + this.annotationA.getClass().getTypeName() + "sy " + annotation.getClass().getTypeName() );
+        }
     }
 
 

@@ -17,8 +17,7 @@ public class FrameworkException4061 extends Exception{
         super(message, cause);
     }
 
-    public FrameworkException4061(String message, Throwable cause, boolean enableSuppression,
-            boolean writableStackTrace) {
+    public FrameworkException4061(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
         super(message, cause, enableSuppression, writableStackTrace);
     }
     
