@@ -8,7 +8,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.itu4061.annotation.Controlleur;
-import com.itu4061.annotation.Entite;
 import com.itu4061.annotation.GetUrl;
 import com.itu4061.annotation.PostUrl;
 import com.itu4061.map.MethodMapping;

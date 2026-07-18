@@ -3,15 +3,13 @@ package com.itu4061.controller;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-
 import com.itu4061.annotation.Controlleur;
-import com.itu4061.annotation.Entite;
 import com.itu4061.annotation.GetUrl;
-import com.itu4061.annotation.PostUrl ;
+import com.itu4061.annotation.PostUrl;
+import com.itu4061.map.MethodMapping;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -25,27 +23,22 @@ import java.lang.reflect.Method;
 public class FrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
     public ArrayList<String> allWebappClassName;
-    public Map<String, Method> methodPostMapping ;
-    public Map<String, Method> methodGetMapping ;
 
-    
+    public Map<String, MethodMapping<GetUrl>> urlGetMapping;
+    public Map<String, MethodMapping<PostUrl>> urlPostMapping;
+
     @Override
     public void init() throws ServletException {
         super.init();
-
-        ClassLoader classLoader = getClassLoader();
-        Package[] packages = classLoader.getDefinedPackages();
-
         allWebappClassName = getAllWebappClasses();
-        methodPostMapping = getPostUrlController() ;
-        methodGetMapping = getGetUrlController();
+        urlGetMapping = urlGetControllerMapping();
+        urlPostMapping = urlPostControllerMapping();
+
     }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-        processRequest(request, response);
-                
         response.setContentType("text/html;charset=UTF-8");
         PrintWriter out = null;
 
@@ -55,24 +48,55 @@ public class FrontController extends HttpServlet {
 
         }
 
-
-        for (String c : this.getAllWebappClasses()) {
-            out.println(c + "</br>");
+        // initialisation de la methode mapping contenant la methode a invoquer et la
+        // classe source de cette methode
+        MethodMapping<GetUrl> methodMapping = null;
+        try {
+            methodMapping = urlGetMapping.get(getRequestURI(request));
+        } catch (Exception e) {
+            out.println(e.getMessage());
+            return;
         }
-        out.println(getAnnotatedClassesBy(Entite.class).toString());
-        getAllAnnotated(response, Controlleur.class);
-        out.println(getGetUrlController());
 
+        // Si la methode mapping est null, on retourne un code 404
+        if (methodMapping == null) {
+            out.println(404);
+            return;
+        }
 
+        Class<?> class1 = methodMapping.getSource();
+        
+        // initialisation de l'objet de la classe source de la methode a invoquer
+        Object o = null;
+        try {
+            o = class1.getDeclaredConstructor()
+                    .newInstance();
+
+        } catch (Exception e) {
+            out.println(e.getMessage());
+        }
+
+        // initialisation de la methode a invoquer
+        Method method = methodMapping.getMethod();
+        try {
+            method.invoke(o, request, response);
+        } catch (Exception e) {
+            out.println(e.getMessage() + "erreur lors de l'invocation de la methode " + method.getName() + " de la classe " + class1.getName());
+        }
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
+        processRequest(request, response);
     }
 
     private void processRequest(HttpServletRequest request, HttpServletResponse response) {
 
+    }
+
+    private String getRequestURI(HttpServletRequest request) {
+        return request.getRequestURI().replace(request.getContextPath() + "/", "");
     }
 
     public ClassLoader getClassLoader() {
@@ -133,60 +157,6 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    private /* ArrayList<Class<?>> */ void getAllAnnotated(HttpServletResponse response,
-            Class<? extends Annotation> annotationClass) {
-        PrintWriter out = null;
-
-        try {
-            out = response.getWriter();
-        } catch (Exception e) {
-
-        }
-
-        ArrayList<String> webappClasses = getAllWebappClasses();
-
-        for (String name : webappClasses) {
-            Class<?> cls = null;
-
-            try {
-                cls = Class.forName(name);
-            } catch (Exception e) {
-                System.out.println(e.getMessage() + " : ClassNotFound => ");
-                continue;
-            }
-
-            if (cls != null) {
-                Annotation ann = null;
-                try {
-                    ann = cls.getAnnotation(annotationClass);
-                } catch (Exception e) {
-                }
-
-                if (ann != null) {
-                    out.println("</br> <h2>" + name + "</h2></br>");
-                    out.println("<h3>Is annotated by : <h3>" + ann.annotationType() + "</br> ");
-                    out.println(Arrays.toString(ann.annotationType().getDeclaredMethods()));
-                    for (Method m : ann.annotationType().getDeclaredMethods()) {
-                        try {
-                            Object o = m.invoke(ann);
-                            out.println("<h4>" + m.toString() + " : " + o.toString() + "</h4> </br>");
-
-                        } catch (Exception e) {
-                            continue;
-                        }
-                    }
-                } else {
-                    out.println(
-                            "</br>" + cls.getName() + "is not annotated by :" + annotationClass.getName() + "</br>");
-                }
-
-            } else {
-
-            }
-
-        }
-    }
-
     private ArrayList<Class<?>> getAnnotatedClassesBy(Class<? extends Annotation> annotation) {
         ArrayList<Class<?>> rez = new ArrayList<Class<?>>();
         ArrayList<String> webappClasses = getAllWebappClasses();
@@ -222,48 +192,51 @@ public class FrontController extends HttpServlet {
         return rez;
     }
 
-    private Map<String, Method> getGetUrlController() {
-        Map<String, Method> rez = new HashMap<>();
+    private Map<String, MethodMapping<GetUrl>> urlGetControllerMapping() {
+        Map<String, MethodMapping<GetUrl>> rez = new HashMap<>();
         ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
+
         for (Class<?> cont : controllers) {
+            Controlleur src = cont.getAnnotation(Controlleur.class);
+
             for (Method m : cont.getMethods()) {
                 if (m.isAnnotationPresent(GetUrl.class)) {
 
-                    GetUrl w = m.getAnnotation(GetUrl.class);
+                    GetUrl getUrl = m.getAnnotation(GetUrl.class);
+                    String key = src.mapping() + getUrl.url();
                     try {
-                        rez.put(w.url(), m);
+                        MethodMapping methodMapping = new MethodMapping<Annotation>(m, cont, getUrl);
+                        rez.put(key, methodMapping);
                     } catch (Exception e) {
                     }
                 }
             }
         }
-
         return rez;
     }
-    private Map<String, Method> getPostUrlController() {
-        Map<String, Method> rez = new HashMap<>();
+
+    private Map<String, MethodMapping<PostUrl>> urlPostControllerMapping() {
+        Map<String, MethodMapping<PostUrl>> rez = new HashMap<>();
         ArrayList<Class<?>> controllers = getAnnotatedClassesBy(Controlleur.class);
+
         for (Class<?> cont : controllers) {
+            Controlleur src = cont.getAnnotation(Controlleur.class);
+
             for (Method m : cont.getMethods()) {
                 if (m.isAnnotationPresent(PostUrl.class)) {
 
-                    PostUrl w = m.getAnnotation(PostUrl.class);
+                    PostUrl postUrl = m.getAnnotation(PostUrl.class);
+                    String key = src.mapping() + postUrl.url();
                     try {
-                        rez.put(w.url(), m);
+                        MethodMapping methodMapping = new MethodMapping<Annotation>(m, cont, postUrl);
+                        rez.put(key, methodMapping);
                     } catch (Exception e) {
+
                     }
                 }
             }
         }
-
         return rez;
-    }
-    public Map<String, Method> getMethodPostMapping() {
-        return methodPostMapping;
-    }
-
-    public Map<String, Method> getMethodGetMapping() {
-        return methodGetMapping;
     }
 
 }
