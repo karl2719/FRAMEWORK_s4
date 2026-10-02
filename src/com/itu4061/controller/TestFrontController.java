@@ -13,6 +13,7 @@ import com.itu4061.annotation.PostUrl;
 import com.itu4061.map.MethodMapping;
 
 import jakarta.servlet.ServletContainerInitializer;
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -63,34 +64,29 @@ public class TestFrontController extends HttpServlet {
 
         // out.println(urlGetMapping);
         // out.println(getRequestURI(request));
-        MethodMapping methodMapping = null ;
+        MethodMapping methodMapping = null;
         try {
-            
-             methodMapping = urlGetMapping.get(getRequestURI(request));
+
+            methodMapping = urlGetMapping.get(getRequestURI(request));
         } catch (Exception e) {
             out.println(e.getMessage());
-            return ;
+            return;
         }
 
         if (methodMapping == null) {
             out.println(404);
-            return ;
+            return;
         }
         Class<?> class1 = methodMapping.getSource();
         out.println(class1.getName() + "</br>");
-        Object o = null;
 
-        try {
-            o = class1.getDeclaredConstructor()
-                    .newInstance();
+        Object o = getBeanInstanceOf(class1);
 
-        } catch (Exception e) {
-           out.println(e.getMessage());
-        }
+
         Method method = methodMapping.getMethod();
         try {
-            
-            method.invoke(o, request,response);
+
+            method.invoke(o, request, response);
         } catch (Exception e) {
             out.println(e.getMessage() + "eaast");
         }
@@ -304,4 +300,22 @@ public class TestFrontController extends HttpServlet {
         return rez;
     }
 
+    private Object getBeanInstanceOf(Class<?> classe) {
+        ServletContext context = this.getServletContext();
+        Object o = null;
+        o = context.getAttribute(classe.getName());
+        if (o!=null) {
+            return o;
+        }
+        else{
+            try {
+                o = classe.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                return null ;
+            }
+            context.setAttribute(classe.getName(), o);
+            return o ;
+        }
+    }
 }

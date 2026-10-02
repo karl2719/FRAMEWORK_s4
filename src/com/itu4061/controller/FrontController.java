@@ -11,6 +11,7 @@ import com.itu4061.annotation.GetUrl;
 import com.itu4061.annotation.PostUrl;
 import com.itu4061.map.MethodMapping;
 
+import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -66,15 +67,9 @@ public class FrontController extends HttpServlet {
 
         Class<?> class1 = methodMapping.getSource();
         
-        // initialisation de l'objet de la classe source de la methode a invoquer
-        Object o = null;
-        try {
-            o = class1.getDeclaredConstructor()
-                    .newInstance();
+        // initialisation de l'objet de la classe source de la methode a invoquer , 
+        Object o = getBeanInstanceOf(class1);
 
-        } catch (Exception e) {
-            out.println(e.getMessage());
-        }
 
         // initialisation de la methode a invoquer
         Method method = methodMapping.getMethod();
@@ -238,5 +233,22 @@ public class FrontController extends HttpServlet {
         }
         return rez;
     }
-
+    private Object getBeanInstanceOf(Class<?> classe) {
+        ServletContext context = this.getServletContext();
+        Object o = null;
+        o = context.getAttribute(classe.getName());
+        if (o!=null) {
+            return o;
+        }
+        else{
+            try {
+                o = classe.getDeclaredConstructor().newInstance();
+            } catch (Exception e) {
+                System.out.println(e.getMessage());
+                return null ;
+            }
+            context.setAttribute(classe.getName(), o);
+            return o ;
+        }
+    }
 }
