@@ -6,11 +6,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import com.google.gson.Gson;
 
+import com.itu4061.annotation.ApiRest;
 import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.GetUrl;
 import com.itu4061.annotation.PostUrl;
 import com.itu4061.map.MethodMapping;
+import com.itu4061.map.Model;
 
 import jakarta.servlet.ServletContainerInitializer;
 import jakarta.servlet.ServletContext;
@@ -46,8 +49,6 @@ public class TestFrontController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-        processRequest(request, response);
-        response.setContentType("text/html;charset=UTF-8");
         PrintWriter out = null;
 
         try {
@@ -66,7 +67,6 @@ public class TestFrontController extends HttpServlet {
         // out.println(getRequestURI(request));
         MethodMapping methodMapping = null;
         try {
-
             methodMapping = urlGetMapping.get(getRequestURI(request));
         } catch (Exception e) {
             out.println(e.getMessage());
@@ -78,24 +78,83 @@ public class TestFrontController extends HttpServlet {
             return;
         }
         Class<?> class1 = methodMapping.getSource();
-        out.println(class1.getName() + "</br>");
 
         Object o = getBeanInstanceOf(class1);
 
-
         Method method = methodMapping.getMethod();
-        try {
+        if (method.isAnnotationPresent(ApiRest.class)) {
+            try {
+                Model rez = (Model)method.invoke(o);
+                Gson gson = new Gson();
+                String json = gson.toJson(rez);
+                response.setContentType("application/json");
+                out.println(json);
+            } catch (Exception e) {
 
-            method.invoke(o, request, response);
-        } catch (Exception e) {
-            out.println(e.getMessage() + "eaast");
+            }
+        } else {
+            try {
+                method.invoke(o);
+            } catch (Exception e) {
+                out.println(e.getMessage() + "eaast");
+            }
         }
+
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-        processRequest(request, response);
+        PrintWriter out = null;
+
+        try {
+            out = response.getWriter();
+        } catch (Exception e) {
+
+        }
+
+        // for (String c : this.getAllWebappClasses()) {
+        // out.println(c + "</br>");
+        // }
+        // out.println(getAnnotatedClassesBy(Entite.class).toString());
+        // // getAllAnnotated(response, Controlleur.class);
+
+        // out.println(urlGetMapping);
+        // out.println(getRequestURI(request));
+        MethodMapping methodMapping = null;
+        try {
+            methodMapping = urlPostMapping.get(getRequestURI(request));
+        } catch (Exception e) {
+            out.println(e.getMessage());
+            return;
+        }
+
+        if (methodMapping == null) {
+            out.println(404);
+            return;
+        }
+        Class<?> class1 = methodMapping.getSource();
+
+        Object o = getBeanInstanceOf(class1);
+
+        Method method = methodMapping.getMethod();
+        if (method.isAnnotationPresent(ApiRest.class)) {
+            try {
+                Model rez = (Model)method.invoke(o);
+                Gson gson = new Gson();
+                String json = gson.toJson(rez);
+                response.setContentType("application/json");
+                out.println(json);
+            } catch (Exception e) {
+
+            }
+        } else {
+            try {
+                method.invoke(o);
+            } catch (Exception e) {
+                out.println(e.getMessage() + "eaast");
+            }
+        }
     }
 
     private void processRequest(HttpServletRequest request, HttpServletResponse response) {
@@ -304,18 +363,17 @@ public class TestFrontController extends HttpServlet {
         ServletContext context = this.getServletContext();
         Object o = null;
         o = context.getAttribute(classe.getName());
-        if (o!=null) {
+        if (o != null) {
             return o;
-        }
-        else{
+        } else {
             try {
                 o = classe.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 System.out.println(e.getMessage());
-                return null ;
+                return null;
             }
             context.setAttribute(classe.getName(), o);
-            return o ;
+            return o;
         }
     }
 }
