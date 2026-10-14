@@ -7,8 +7,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.swing.text.View;
-
 import com.google.gson.Gson;
 
 import com.itu4061.annotation.ApiRest;
@@ -38,8 +36,7 @@ public class TestFrontController extends HttpServlet {
 
     public Map<String, MethodMapping<GetUrl>> urlGetMapping;
     public Map<String, MethodMapping<PostUrl>> urlPostMapping;
-    public ArrayList<String> jspFileList ;
-
+    public ArrayList<String> jspFileList;
 
     @Override
     public void init() throws ServletException {
@@ -51,126 +48,96 @@ public class TestFrontController extends HttpServlet {
         allWebappClassName = getAllWebappClasses();
         urlGetMapping = urlGetControllerMapping();
         urlPostMapping = urlPostControllerMapping();
-        jspFileList = new ArrayList<>() ;
-        FrameworkUtils.scanForViewJsp(new File(getServletContext().getRealPath("")), getServletContext().getRealPath(""), jspFileList);
+        jspFileList = new ArrayList<>();
+        FrameworkUtils.scanForViewJsp(new File(getServletContext().getRealPath("")),
+                getServletContext().getRealPath(""), jspFileList);
 
     }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-        PrintWriter out = null;
-
-        try {
-            out = response.getWriter();
-        } catch (Exception e) {
-
-        }
-
-        MethodMapping methodMapping = null;
-        try {
-            methodMapping = urlGetMapping.get(getRequestURI(request));
-        } catch (Exception e) {
-            out.println(e.getMessage());
-            return;
-        }
-
-        if (methodMapping == null) {
-            out.println(404);
-            return;
-        }
-        Class<?> class1 = methodMapping.getSource();
-
-        Object o = getBeanInstanceOf(class1);
-
-        Method method = methodMapping.getMethod();
-        if (method.isAnnotationPresent(ApiRest.class)) {
-            try {
-                Object rez = method.invoke(o);
-                Gson gson = new Gson();
-                String json = gson.toJson(rez);
-                
-                response.setContentType("application/json");
-
-                out.println(gson.toJson(json));
-                
-            } catch (Exception e) {
-                System.out.println(e.getMessage());
-            }
-        } 
-        else if (method.isAnnotationPresent(ViewFile.class)){
-            try {
-                String view = method.getDeclaredAnnotation(ViewFile.class).view();
-                if (!jspFileList.contains(view)) {
-                    out.println("erreur --> view : " + view + " inexistant") ;
-                    return ;
-                }
-                RequestDispatcher dispatcher =  request.getRequestDispatcher(view);
-                dispatcher.forward(request, response);
-                
-            } catch (Exception e) {
-
-            }
-        }
-        else {
-            try {
-                method.invoke(o);
-            } catch (Exception e) {
-                out.println(e.getMessage() + "eaast");
-            }
-        }
-
+                processRequest(request, response, urlGetMapping);
     }
 
+
+    
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-        PrintWriter out = null;
+                processRequest(request, response, urlPostMapping);
 
-        try {
-            out = response.getWriter();
-        } catch (Exception e) {
-
-        }
-
-         MethodMapping methodMapping = null;
-        try {
-            methodMapping = urlPostMapping.get(getRequestURI(request));
-        } catch (Exception e) {
-            out.println(e.getMessage());
-            return;
-        }
-
-        if (methodMapping == null) {
-            out.println(404);
-            return;
-        }
-        Class<?> class1 = methodMapping.getSource();
-
-        Object o = getBeanInstanceOf(class1);
-
-        Method method = methodMapping.getMethod();
-        if (method.isAnnotationPresent(ApiRest.class)) {
-            try {
-                Model rez = (Model)method.invoke(o);
-                Gson gson = new Gson();
-                String json = gson.toJson(rez);
-                response.setContentType("application/json");
-                out.println(json);
-            } catch (Exception e) {
-
-            }
-        } else {
-            try {
-                method.invoke(o);
-            } catch (Exception e) {
-                out.println(e.getMessage() + "eaast");
-            }
-        }
     }
 
-    private void processRequest(HttpServletRequest request, HttpServletResponse response) {
+    private void processRequest(HttpServletRequest request, HttpServletResponse response , Map<?, ?> urlMap) {
+        
+        MethodMapping methodMapping = null;
+        try {
+            methodMapping = (MethodMapping) urlMap.get(getRequestURI(request));
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return;
+        }
 
+
+        if (methodMapping == null && jspFileList.contains("/"+getRequestURI(request)) == false) {
+            System.out.println(getRequestURI(request)) ;
+            System.out.println(404);
+            try {
+                response.sendError(404, getRequestURI(request));
+                return;
+                
+            } catch (Exception e) {
+                System.out.println(e.getMessage() + " : " + e.getStackTrace());
+            }
+        }
+
+        if (methodMapping != null) {
+            Class<?> class1 = methodMapping.getSource();
+
+            Object o = getBeanInstanceOf(class1);
+
+            Method method = methodMapping.getMethod();
+
+            if (method.isAnnotationPresent(ViewFile.class)) {
+                try {
+                    String view = method.getDeclaredAnnotation(ViewFile.class).view();
+                    if (!jspFileList.contains(view)) {
+                        System.out.println("erreur --> view : " + view + " inexistant");
+                        return;
+                    }
+                    RequestDispatcher dispatcher = request.getRequestDispatcher(view);
+                    Object rez = method.invoke(o);
+                    request.setAttribute("return", rez);
+                    System.out.println(view);
+                    dispatcher.forward(request, response);
+
+                } catch (Exception e) {
+                    System.out.println(e.getMessage());
+                }
+            } else if (method.isAnnotationPresent(ApiRest.class)
+                    || class1.getAnnotation(Controlleur.class).type().equals("REST") ) {
+                try {
+                    Object rez = method.invoke(o);
+                    Gson gson = new Gson();
+                    String json = gson.toJson(rez);
+
+                    response.setContentType("application/json");
+                    response.getWriter().println(json);
+
+                } catch (Exception e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+
+            else {
+                try {
+                    method.invoke(o);
+                } catch (Exception e) {
+                    System.out.println(e.getMessage() + "eaast");
+                }
+            }
+        }
     }
 
     private String getRequestURI(HttpServletRequest request) {

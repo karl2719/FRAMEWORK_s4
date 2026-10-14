@@ -11,7 +11,7 @@ public class FrameworkUtils {
             } else if (file.getName().endsWith(".jsp")) {
                 String classname = file.getAbsolutePath()
                         .replace(root, "") ;
-                result.add(classname);
+                result.add("/"+classname);
             }
         }
     }
