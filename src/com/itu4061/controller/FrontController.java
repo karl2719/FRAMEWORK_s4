@@ -3,14 +3,23 @@ package com.itu4061.controller;
 import java.io.File;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.google.gson.Gson;
+
+import com.itu4061.annotation.ApiRest;
+import com.itu4061.annotation.ViewFile;
 import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.GetUrl;
 import com.itu4061.annotation.PostUrl;
 import com.itu4061.map.MethodMapping;
+import com.itu4061.map.Model;
+import com.itu4061.utils.FrameworkUtils;
 
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.ServletContainerInitializer;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -27,67 +36,108 @@ public class FrontController extends HttpServlet {
 
     public Map<String, MethodMapping<GetUrl>> urlGetMapping;
     public Map<String, MethodMapping<PostUrl>> urlPostMapping;
+    public ArrayList<String> jspFileList;
 
     @Override
     public void init() throws ServletException {
         super.init();
+
+        ClassLoader classLoader = getClassLoader();
+        Package[] packages = classLoader.getDefinedPackages();
+
         allWebappClassName = getAllWebappClasses();
         urlGetMapping = urlGetControllerMapping();
         urlPostMapping = urlPostControllerMapping();
+        jspFileList = new ArrayList<>();
+        FrameworkUtils.scanForViewJsp(new File(getServletContext().getRealPath("")),
+                getServletContext().getRealPath(""), jspFileList);
 
     }
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-        response.setContentType("text/html;charset=UTF-8");
-        PrintWriter out = null;
-
-        try {
-            out = response.getWriter();
-        } catch (Exception e) {
-
-        }
-
-        // initialisation de la methode mapping contenant la methode a invoquer et la
-        // classe source de cette methode
-        MethodMapping<GetUrl> methodMapping = null;
-        try {
-            methodMapping = urlGetMapping.get(getRequestURI(request));
-        } catch (Exception e) {
-            out.println(e.getMessage());
-            return;
-        }
-
-        // Si la methode mapping est null, on retourne un code 404
-        if (methodMapping == null) {
-            out.println(404);
-            return;
-        }
-
-        Class<?> class1 = methodMapping.getSource();
-        
-        // initialisation de l'objet de la classe source de la methode a invoquer , 
-        Object o = getBeanInstanceOf(class1);
-
-
-        // initialisation de la methode a invoquer
-        Method method = methodMapping.getMethod();
-        try {
-            method.invoke(o, request, response);
-        } catch (Exception e) {
-            out.println(e.getMessage() + "erreur lors de l'invocation de la methode " + method.getName() + " de la classe " + class1.getName());
-        }
+                processRequest(request, response, urlGetMapping);
     }
 
+
+    
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-        processRequest(request, response);
+                processRequest(request, response, urlPostMapping);
+
     }
 
-    private void processRequest(HttpServletRequest request, HttpServletResponse response) {
+    private void processRequest(HttpServletRequest request, HttpServletResponse response , Map<?, ?> urlMap) {
+        
+        MethodMapping methodMapping = null;
+        try {
+            methodMapping = (MethodMapping) urlMap.get(getRequestURI(request));
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return;
+        }
 
+
+        if (methodMapping == null && jspFileList.contains("/"+getRequestURI(request)) == false) {
+            System.out.println(getRequestURI(request)) ;
+            System.out.println(404);
+            try {
+                response.sendError(404, getRequestURI(request));
+                return;
+                
+            } catch (Exception e) {
+                System.out.println(e.getMessage() + " : " + e.getStackTrace());
+            }
+        }
+
+        if (methodMapping != null) {
+            Class<?> class1 = methodMapping.getSource();
+
+            Object o = getBeanInstanceOf(class1);
+
+            Method method = methodMapping.getMethod();
+
+            if (method.isAnnotationPresent(ViewFile.class)) {
+                try {
+                    String view = method.getDeclaredAnnotation(ViewFile.class).view();
+                    if (!jspFileList.contains(view)) {
+                        System.out.println("erreur --> view : " + view + " inexistant");
+                        return;
+                    }
+                    RequestDispatcher dispatcher = request.getRequestDispatcher(view);
+                    Object rez = method.invoke(o);
+                    request.setAttribute("return", rez);
+                    System.out.println(view);
+                    dispatcher.forward(request, response);
+
+                } catch (Exception e) {
+                    System.out.println(e.getMessage());
+                }
+            } else if (method.isAnnotationPresent(ApiRest.class)
+                    || class1.getAnnotation(Controlleur.class).type().equals("REST") ) {
+                try {
+                    Object rez = method.invoke(o);
+                    Gson gson = new Gson();
+                    String json = gson.toJson(rez);
+
+                    response.setContentType("application/json");
+                    response.getWriter().println(json);
+
+                } catch (Exception e) {
+                    System.out.println(e.getMessage());
+                }
+            }
+
+            else {
+                try {
+                    method.invoke(o);
+                } catch (Exception e) {
+                    System.out.println(e.getMessage() + "eaast");
+                }
+            }
+        }
     }
 
     private String getRequestURI(HttpServletRequest request) {
@@ -151,6 +201,8 @@ public class FrontController extends HttpServlet {
             }
         }
     }
+
+   
 
     private ArrayList<Class<?>> getAnnotatedClassesBy(Class<? extends Annotation> annotation) {
         ArrayList<Class<?>> rez = new ArrayList<Class<?>>();
@@ -233,22 +285,22 @@ public class FrontController extends HttpServlet {
         }
         return rez;
     }
+
     private Object getBeanInstanceOf(Class<?> classe) {
         ServletContext context = this.getServletContext();
         Object o = null;
         o = context.getAttribute(classe.getName());
-        if (o!=null) {
+        if (o != null) {
             return o;
-        }
-        else{
+        } else {
             try {
                 o = classe.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
                 System.out.println(e.getMessage());
-                return null ;
+                return null;
             }
             context.setAttribute(classe.getName(), o);
-            return o ;
+            return o;
         }
     }
 }
