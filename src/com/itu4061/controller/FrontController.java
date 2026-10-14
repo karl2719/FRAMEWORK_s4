@@ -1,9 +1,7 @@
 package com.itu4061.controller;
 
 import java.io.File;
-import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,11 +13,9 @@ import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.GetUrl;
 import com.itu4061.annotation.PostUrl;
 import com.itu4061.map.MethodMapping;
-import com.itu4061.map.Model;
 import com.itu4061.utils.FrameworkUtils;
 
 import jakarta.servlet.RequestDispatcher;
-import jakarta.servlet.ServletContainerInitializer;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
@@ -51,7 +47,7 @@ public class FrontController extends HttpServlet {
         jspFileList = new ArrayList<>();
         FrameworkUtils.scanForViewJsp(new File(getServletContext().getRealPath("")),
                 getServletContext().getRealPath(""), jspFileList);
-
+        System.out.println(urlGetMapping);
     }
 
     @Override
@@ -118,12 +114,12 @@ public class FrontController extends HttpServlet {
             } else if (method.isAnnotationPresent(ApiRest.class)
                     || class1.getAnnotation(Controlleur.class).type().equals("REST") ) {
                 try {
-                    Object rez = method.invoke(o);
-                    Gson gson = new Gson();
-                    String json = gson.toJson(rez);
+                    // Object rez = method.invoke(o);
+                    // Gson gson = new Gson();
+                    // String json = gson.toJson(rez);
 
-                    response.setContentType("application/json");
-                    response.getWriter().println(json);
+                    // response.setContentType("application/json");
+                    // response.getWriter().println(json);
 
                 } catch (Exception e) {
                     System.out.println(e.getMessage());

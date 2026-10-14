@@ -15,7 +15,6 @@ import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.GetUrl;
 import com.itu4061.annotation.PostUrl;
 import com.itu4061.map.MethodMapping;
-import com.itu4061.map.Model;
 import com.itu4061.utils.FrameworkUtils;
 
 import jakarta.servlet.RequestDispatcher;
@@ -29,6 +28,7 @@ import java.net.URL;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 
 public class TestFrontController extends HttpServlet {
     public ArrayList<Class<?>> classeAnnoted = new ArrayList<Class<?>>();
@@ -57,20 +57,18 @@ public class TestFrontController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-                processRequest(request, response, urlGetMapping);
+        processRequest(request, response, urlGetMapping);
     }
 
-
-    
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
-                processRequest(request, response, urlPostMapping);
+        processRequest(request, response, urlPostMapping);
 
     }
 
-    private void processRequest(HttpServletRequest request, HttpServletResponse response , Map<?, ?> urlMap) {
-        
+    private void processRequest(HttpServletRequest request, HttpServletResponse response, Map<?, ?> urlMap) {
+        System.out.println(getRequestURI(request));
         MethodMapping methodMapping = null;
         try {
             methodMapping = (MethodMapping) urlMap.get(getRequestURI(request));
@@ -79,14 +77,14 @@ public class TestFrontController extends HttpServlet {
             return;
         }
 
+        if (methodMapping == null && jspFileList.contains("/" + getRequestURI(request)) == false) {
 
-        if (methodMapping == null && jspFileList.contains("/"+getRequestURI(request)) == false) {
-            System.out.println(getRequestURI(request)) ;
-            System.out.println(404);
             try {
                 response.sendError(404, getRequestURI(request));
+                System.out.println(getRequestURI(request));
+                System.out.println(404);
                 return;
-                
+
             } catch (Exception e) {
                 System.out.println(e.getMessage() + " : " + e.getStackTrace());
             }
@@ -98,7 +96,12 @@ public class TestFrontController extends HttpServlet {
             Object o = getBeanInstanceOf(class1);
 
             Method method = methodMapping.getMethod();
-
+            Parameter[] params = method.getParameters();
+            
+            for (int params2 = 0; params2 < params.length; params2++) {
+                System.out.println(params[params2].getName());
+            }
+            
             if (method.isAnnotationPresent(ViewFile.class)) {
                 try {
                     String view = method.getDeclaredAnnotation(ViewFile.class).view();
@@ -116,7 +119,7 @@ public class TestFrontController extends HttpServlet {
                     System.out.println(e.getMessage());
                 }
             } else if (method.isAnnotationPresent(ApiRest.class)
-                    || class1.getAnnotation(Controlleur.class).type().equals("REST") ) {
+                    || class1.getAnnotation(Controlleur.class).type().equals("REST")) {
                 try {
                     Object rez = method.invoke(o);
                     Gson gson = new Gson();
@@ -238,6 +241,7 @@ public class TestFrontController extends HttpServlet {
                     for (Method m : ann.annotationType().getDeclaredMethods()) {
                         try {
                             Object o = m.invoke(ann);
+
                             out.println("<h4>" + m.toString() + " : " + o.toString() + "</h4> </br>");
 
                         } catch (Exception e) {
@@ -245,7 +249,7 @@ public class TestFrontController extends HttpServlet {
                         }
                     }
                 } else {
-                    out.println(
+                    System.out.println(
                             "</br>" + cls.getName() + "is not annotated by :" + annotationClass.getName() + "</br>");
                 }
 
