@@ -13,6 +13,7 @@ import com.itu4061.annotation.ApiRest;
 import com.itu4061.annotation.ViewFile;
 import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.GetUrl;
+import com.itu4061.annotation.Param;
 import com.itu4061.annotation.PostUrl;
 import com.itu4061.map.MethodMapping;
 import com.itu4061.utils.FrameworkUtils;
@@ -57,12 +58,14 @@ public class TestFrontController extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
+
         processRequest(request, response, urlGetMapping);
     }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, java.io.IOException {
+
         processRequest(request, response, urlPostMapping);
 
     }
@@ -73,6 +76,7 @@ public class TestFrontController extends HttpServlet {
         try {
             methodMapping = (MethodMapping) urlMap.get(getRequestURI(request));
         } catch (Exception e) {
+            System.out.println(e.getMessage());
             System.out.println(e.getMessage());
             return;
         }
@@ -86,6 +90,7 @@ public class TestFrontController extends HttpServlet {
                 return;
 
             } catch (Exception e) {
+                System.out.println(e.getMessage());
                 System.out.println(e.getMessage() + " : " + e.getStackTrace());
             }
         }
@@ -96,10 +101,30 @@ public class TestFrontController extends HttpServlet {
             Object o = getBeanInstanceOf(class1);
 
             Method method = methodMapping.getMethod();
+
             Parameter[] params = method.getParameters();
-            
-            for (int params2 = 0; params2 < params.length; params2++) {
-                System.out.println(params[params2].getName());
+
+            System.out.println(method.getName());
+            for (int i = 0; i < params.length; i++) {
+                if (!params[i].isAnnotationPresent(Param.class)) {
+
+                    System.out.println(params[i].getName() + " : " + params[i].getType().getSimpleName());
+                } else {
+                    System.out.println(params[i].getAnnotation(Param.class).value() + " : " + params[i].getType().getSimpleName());
+                }
+            }
+
+            //recuperation liste paramettre requete
+            ArrayList<Object> paramList = new ArrayList<Object>() ;
+            for (int i = 0 ; i < params.length; i++) {
+                Parameter p = params[i] ;
+                if(p.isAnnotationPresent(Param.class)){
+                    try {
+                        
+                    } catch (Exception e) {
+                        // TODO: handle exception
+                    }
+                }
             }
             
             if (method.isAnnotationPresent(ViewFile.class)) {
@@ -111,6 +136,7 @@ public class TestFrontController extends HttpServlet {
                     }
                     RequestDispatcher dispatcher = request.getRequestDispatcher(view);
                     Object rez = method.invoke(o);
+
                     request.setAttribute("return", rez);
                     System.out.println(view);
                     dispatcher.forward(request, response);
@@ -311,6 +337,7 @@ public class TestFrontController extends HttpServlet {
                         MethodMapping methodMapping = new MethodMapping<Annotation>(m, cont, getUrl);
                         rez.put(key, methodMapping);
                     } catch (Exception e) {
+                        System.out.println(e.getMessage());
                     }
                 }
             }
@@ -334,6 +361,7 @@ public class TestFrontController extends HttpServlet {
                         MethodMapping methodMapping = new MethodMapping<Annotation>(m, cont, postUrl);
                         rez.put(key, methodMapping);
                     } catch (Exception e) {
+                        System.out.println(e.getMessage());
 
                     }
                 }
@@ -352,6 +380,7 @@ public class TestFrontController extends HttpServlet {
             try {
                 o = classe.getDeclaredConstructor().newInstance();
             } catch (Exception e) {
+                System.out.println(e.getMessage());
                 System.out.println(e.getMessage());
                 return null;
             }
