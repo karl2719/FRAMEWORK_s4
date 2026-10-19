@@ -15,6 +15,7 @@ import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.GetUrl;
 import com.itu4061.annotation.Param;
 import com.itu4061.annotation.PostUrl;
+import com.itu4061.exception.InnerRequestException;
 import com.itu4061.map.MethodMapping;
 import com.itu4061.utils.FrameworkUtils;
 
@@ -114,18 +115,19 @@ public class TestFrontController extends HttpServlet {
                 }
             }
 
-            //recuperation liste paramettre requete
-            ArrayList<Object> paramList = new ArrayList<Object>() ;
-            for (int i = 0 ; i < params.length; i++) {
-                Parameter p = params[i] ;
-                if(p.isAnnotationPresent(Param.class)){
-                    try {
-                        
-                    } catch (Exception e) {
-                        // TODO: handle exception
-                    }
+            Object[] args;
+            try {
+                args = getRequestParameters(request, params);
+            } catch (InnerRequestException e) {
+                try {
+                    response.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+                } catch (java.io.IOException responseException) {
+                    responseException.initCause(e);
+                    throw new RuntimeException(responseException);
                 }
+                return;
             }
+
             
             if (method.isAnnotationPresent(ViewFile.class)) {
                 try {
@@ -135,7 +137,7 @@ public class TestFrontController extends HttpServlet {
                         return;
                     }
                     RequestDispatcher dispatcher = request.getRequestDispatcher(view);
-                    Object rez = method.invoke(o);
+                    Object rez = method.invoke(o,args);
 
                     request.setAttribute("return", rez);
                     System.out.println(view);
@@ -143,11 +145,12 @@ public class TestFrontController extends HttpServlet {
 
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
+
                 }
             } else if (method.isAnnotationPresent(ApiRest.class)
                     || class1.getAnnotation(Controlleur.class).type().equals("REST")) {
                 try {
-                    Object rez = method.invoke(o);
+                    Object rez = method.invoke(o,args);
                     Gson gson = new Gson();
                     String json = gson.toJson(rez);
 
@@ -161,12 +164,85 @@ public class TestFrontController extends HttpServlet {
 
             else {
                 try {
-                    method.invoke(o);
+                    method.invoke(o, args);
                 } catch (Exception e) {
                     System.out.println(e.getMessage() + "eaast");
                 }
             }
         }
+    }
+
+    private Object[] getRequestParameters(HttpServletRequest request, Parameter[] params)
+            throws InnerRequestException {
+        Object[] args = new Object[params.length];
+
+        for (int i = 0; i < params.length; i++) {
+            Parameter parameter = params[i];
+            Param param = parameter.getAnnotation(Param.class);
+            if (param == null) {
+                throw new InnerRequestException("Le parametre " + parameter.getName()
+                        + " doit etre annote avec @Param");
+            }
+
+            String value = request.getParameter(param.value());
+            if (value == null) {
+                throw new InnerRequestException("Parametre de requete manquant : " + param.value());
+            }
+
+            args[i] = castRequestParameter(value, parameter.getType(), param.value());
+        }
+
+        return args;
+    }
+
+    private Object castRequestParameter(String value, Class<?> targetType, String parameterName)
+            throws InnerRequestException {
+        try {
+            if (targetType == String.class) {
+                return value;
+            }
+            if (targetType == int.class || targetType == Integer.class) {
+                return Integer.valueOf(value);
+            }
+            if (targetType == long.class || targetType == Long.class) {
+                return Long.valueOf(value);
+            }
+            if (targetType == double.class || targetType == Double.class) {
+                return Double.valueOf(value);
+            }
+            if (targetType == float.class || targetType == Float.class) {
+                return Float.valueOf(value);
+            }
+            if (targetType == short.class || targetType == Short.class) {
+                return Short.valueOf(value);
+            }
+            if (targetType == byte.class || targetType == Byte.class) {
+                return Byte.valueOf(value);
+            }
+            if (targetType == boolean.class || targetType == Boolean.class) {
+                if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
+                    throw new IllegalArgumentException("valeur booleenne invalide");
+                }
+                return Boolean.valueOf(value);
+            }
+            if (targetType == char.class || targetType == Character.class) {
+                if (value.length() != 1) {
+                    throw new IllegalArgumentException("un caractere est attendu");
+                }
+                return value.charAt(0);
+            }
+            if (targetType.isEnum()) {
+                @SuppressWarnings({ "rawtypes", "unchecked" })
+                Object enumValue = Enum.valueOf((Class<? extends Enum>) targetType, value);
+                return enumValue;
+            }
+        } catch (IllegalArgumentException e) {
+            throw new InnerRequestException("Valeur invalide pour le parametre " + parameterName
+                    + " (type attendu : " + targetType.getSimpleName() + ")", e);
+        }
+
+        throw new InnerRequestException("Type de parametre non supporte pour " + parameterName
+                + " : " + targetType.getName());
     }
 
     private String getRequestURI(HttpServletRequest request) {
