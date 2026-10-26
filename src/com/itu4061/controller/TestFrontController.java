@@ -17,15 +17,17 @@ import com.itu4061.annotation.Param;
 import com.itu4061.annotation.PostUrl;
 import com.itu4061.exception.InnerRequestException;
 import com.itu4061.map.MethodMapping;
+import com.itu4061.map.SessionMapping;
 import com.itu4061.utils.FrameworkUtils;
 
 import jakarta.servlet.RequestDispatcher;
-import jakarta.servlet.ServletContainerInitializer;
 import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+
 import java.net.URL;
 
 import java.lang.annotation.Annotation;
@@ -40,6 +42,7 @@ public class TestFrontController extends HttpServlet {
     public Map<String, MethodMapping<PostUrl>> urlPostMapping;
     public ArrayList<String> jspFileList;
 
+
     @Override
     public void init() throws ServletException {
         super.init();
@@ -53,7 +56,6 @@ public class TestFrontController extends HttpServlet {
         jspFileList = new ArrayList<>();
         FrameworkUtils.scanForViewJsp(new File(getServletContext().getRealPath("")),
                 getServletContext().getRealPath(""), jspFileList);
-
     }
 
     @Override
@@ -73,6 +75,7 @@ public class TestFrontController extends HttpServlet {
 
     private void processRequest(HttpServletRequest request, HttpServletResponse response, Map<?, ?> urlMap) {
         System.out.println(getRequestURI(request));
+        
         MethodMapping methodMapping = null;
         try {
             methodMapping = (MethodMapping) urlMap.get(getRequestURI(request));
@@ -81,9 +84,9 @@ public class TestFrontController extends HttpServlet {
             System.out.println(e.getMessage());
             return;
         }
-
+        
         if (methodMapping == null && jspFileList.contains("/" + getRequestURI(request)) == false) {
-
+            
             try {
                 response.sendError(404, getRequestURI(request));
                 System.out.println(getRequestURI(request));
@@ -111,7 +114,8 @@ public class TestFrontController extends HttpServlet {
 
                     System.out.println(params[i].getName() + " : " + params[i].getType().getSimpleName());
                 } else {
-                    System.out.println(params[i].getAnnotation(Param.class).value() + " : " + params[i].getType().getSimpleName());
+                    System.out.println(
+                            params[i].getAnnotation(Param.class).value() + " : " + params[i].getType().getSimpleName());
                 }
             }
 
@@ -127,7 +131,6 @@ public class TestFrontController extends HttpServlet {
                 }
                 return;
             }
-
             
             if (method.isAnnotationPresent(ViewFile.class)) {
                 try {
@@ -137,12 +140,12 @@ public class TestFrontController extends HttpServlet {
                         return;
                     }
                     RequestDispatcher dispatcher = request.getRequestDispatcher(view);
-                    Object rez = method.invoke(o,args);
+                    Object rez = method.invoke(o, args);
 
                     request.setAttribute("return", rez);
                     System.out.println(view);
                     dispatcher.forward(request, response);
-
+                    
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
 
@@ -150,7 +153,7 @@ public class TestFrontController extends HttpServlet {
             } else if (method.isAnnotationPresent(ApiRest.class)
                     || class1.getAnnotation(Controlleur.class).type().equals("REST")) {
                 try {
-                    Object rez = method.invoke(o,args);
+                    Object rez = method.invoke(o, args);
                     Gson gson = new Gson();
                     String json = gson.toJson(rez);
 
@@ -170,6 +173,9 @@ public class TestFrontController extends HttpServlet {
                 }
             }
         }
+        // SessionMapping d = getBeanSession(request.getSession());
+        // System.out.println(d.id);
+        // System.out.println(d.getParametter("nom"));
     }
 
     private Object[] getRequestParameters(HttpServletRequest request, Parameter[] params)
@@ -180,16 +186,26 @@ public class TestFrontController extends HttpServlet {
             Parameter parameter = params[i];
             Param param = parameter.getAnnotation(Param.class);
             if (param == null) {
-                throw new InnerRequestException("Le parametre " + parameter.getName()
-                        + " doit etre annote avec @Param");
+                if (parameter.getType() == SessionMapping.class) {
+                    SessionMapping  p = getBeanSession(request.getSession()) ;
+                    
+                    args [i] = p ;
+                    System.out.println(args[i].getClass()) ;
+                    continue;
+                } else {
+                    throw new InnerRequestException("Le parametre " + parameter.getName()
+                            + " doit etre annote avec @Param");
+                }
             }
-
-            String value = request.getParameter(param.value());
+            else{
+                String value = request.getParameter(param.value());
             if (value == null) {
                 throw new InnerRequestException("Parametre de requete manquant : " + param.value());
             }
 
             args[i] = castRequestParameter(value, parameter.getType(), param.value());
+            }
+            
         }
 
         return args;
@@ -463,5 +479,15 @@ public class TestFrontController extends HttpServlet {
             context.setAttribute(classe.getName(), o);
             return o;
         }
+    }
+
+    private SessionMapping getBeanSession(HttpSession session){
+        SessionMapping  p ; 
+       p = (SessionMapping) getServletContext().getAttribute(session.getId()) ;
+       if (p== null) {
+        p= new SessionMapping(session) ;
+        getServletContext().setAttribute(session.getId(),p) ;
+       }
+       return  p ;
     }
 }
