@@ -10,6 +10,7 @@ import java.util.Map;
 import com.google.gson.Gson;
 
 import com.itu4061.annotation.ApiRest;
+import com.itu4061.annotation.Auth;
 import com.itu4061.annotation.ViewFile;
 import com.itu4061.annotation.Controlleur;
 import com.itu4061.annotation.GetUrl;
@@ -41,7 +42,6 @@ public class FrontController extends HttpServlet {
     public Map<String, MethodMapping<GetUrl>> urlGetMapping;
     public Map<String, MethodMapping<PostUrl>> urlPostMapping;
     public ArrayList<String> jspFileList;
-
 
     @Override
     public void init() throws ServletException {
@@ -75,7 +75,7 @@ public class FrontController extends HttpServlet {
 
     private void processRequest(HttpServletRequest request, HttpServletResponse response, Map<?, ?> urlMap) {
         System.out.println(getRequestURI(request));
-        
+
         MethodMapping methodMapping = null;
         try {
             methodMapping = (MethodMapping) urlMap.get(getRequestURI(request));
@@ -84,9 +84,9 @@ public class FrontController extends HttpServlet {
             System.out.println(e.getMessage());
             return;
         }
-        
+
         if (methodMapping == null && jspFileList.contains("/" + getRequestURI(request)) == false) {
-            
+
             try {
                 response.sendError(404, getRequestURI(request));
                 System.out.println(getRequestURI(request));
@@ -100,11 +100,45 @@ public class FrontController extends HttpServlet {
         }
 
         if (methodMapping != null) {
+
             Class<?> class1 = methodMapping.getSource();
 
             Object o = getBeanInstanceOf(class1);
 
             Method method = methodMapping.getMethod();
+
+
+
+
+            if(method.isAnnotationPresent(Auth.class)){
+                Auth auth = method.getAnnotation(Auth.class);
+                String[] authValues = auth.value();
+                String key = auth.key();
+
+                SessionMapping session = getBeanSession(request.getSession());
+                boolean isAuthenticated = false ;
+                if (authValues.length ==0) {
+                    isAuthenticated = true;
+                }
+                else{
+                    String sessionValue = (String) session.getParametter(key);
+                    for (String authValue : authValues) {
+                        if (sessionValue != null && sessionValue.toUpperCase().equals(authValue.toUpperCase())) {
+                            isAuthenticated = true;
+                            break;
+                        }
+                    }
+                }
+                if (!isAuthenticated) {
+                    try {
+                        response.sendError(HttpServletResponse.SC_FORBIDDEN, "Accès refusé");
+                    } catch (java.io.IOException responseException) {
+                        throw new RuntimeException(responseException);
+                    }
+                    return;
+                }
+            }
+
 
             Parameter[] params = method.getParameters();
 
@@ -131,7 +165,7 @@ public class FrontController extends HttpServlet {
                 }
                 return;
             }
-            
+
             if (method.isAnnotationPresent(ViewFile.class)) {
                 try {
                     String view = method.getDeclaredAnnotation(ViewFile.class).view();
@@ -145,7 +179,7 @@ public class FrontController extends HttpServlet {
                     request.setAttribute("return", rez);
                     System.out.println(view);
                     dispatcher.forward(request, response);
-                    
+
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
 
@@ -187,25 +221,24 @@ public class FrontController extends HttpServlet {
             Param param = parameter.getAnnotation(Param.class);
             if (param == null) {
                 if (parameter.getType() == SessionMapping.class) {
-                    SessionMapping  p = getBeanSession(request.getSession()) ;
-                    
-                    args [i] = p ;
-                    System.out.println(args[i].getClass()) ;
+                    SessionMapping p = getBeanSession(request.getSession());
+
+                    args[i] = p;
+                    System.out.println(args[i].getClass());
                     continue;
                 } else {
                     throw new InnerRequestException("Le parametre " + parameter.getName()
                             + " doit etre annote avec @Param");
                 }
-            }
-            else{
+            } else {
                 String value = request.getParameter(param.value());
-            if (value == null) {
-                throw new InnerRequestException("Parametre de requete manquant : " + param.value());
+                if (value == null) {
+                    throw new InnerRequestException("Parametre de requete manquant : " + param.value());
+                }
+
+                args[i] = castRequestParameter(value, parameter.getType(), param.value());
             }
 
-            args[i] = castRequestParameter(value, parameter.getType(), param.value());
-            }
-            
         }
 
         return args;
@@ -322,6 +355,7 @@ public class FrontController extends HttpServlet {
             }
         }
     }
+
     private ArrayList<Class<?>> getAnnotatedClassesBy(Class<? extends Annotation> annotation) {
         ArrayList<Class<?>> rez = new ArrayList<Class<?>>();
         ArrayList<String> webappClasses = getAllWebappClasses();
@@ -425,13 +459,13 @@ public class FrontController extends HttpServlet {
         }
     }
 
-    private SessionMapping getBeanSession(HttpSession session){
-        SessionMapping  p ; 
-       p = (SessionMapping) getServletContext().getAttribute(session.getId()) ;
-       if (p== null) {
-        p= new SessionMapping(session) ;
-        getServletContext().setAttribute(session.getId(),p) ;
-       }
-       return  p ;
+    private SessionMapping getBeanSession(HttpSession session) {
+        SessionMapping p;
+        p = (SessionMapping) getServletContext().getAttribute(session.getId());
+        if (p == null) {
+            p = new SessionMapping(session);
+            getServletContext().setAttribute(session.getId(), p);
+        }
+        return p;
     }
 }
